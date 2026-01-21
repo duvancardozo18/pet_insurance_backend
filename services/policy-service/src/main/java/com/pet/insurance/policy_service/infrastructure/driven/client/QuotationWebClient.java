@@ -20,12 +20,11 @@ public class QuotationWebClient implements QuotationClient {
     }
 
     @Override
-    public Mono<Quotation> findById(String quotationId) {
+    public Mono<QuotationDTO> findById(String quotationId) {
         return webClient
                 .get()
                 .uri("/{id}", quotationId)
                 .retrieve()
-                .bodyToMono(QuotationDTO.class)
-                .map(mapper::toDomain);
+                .bodyToMono(QuotationDTO.class);
     }
 }
