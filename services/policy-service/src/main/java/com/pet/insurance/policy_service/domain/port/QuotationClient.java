@@ -1,8 +1,8 @@
 package com.pet.insurance.policy_service.domain.port;
 
-import com.pet.insurance.policy_service.infrastructure.driven.client.dto.QuotationDTO;
+import com.pet.insurance.policy_service.domain.model.Quotation;
 import reactor.core.publisher.Mono;
 
 public interface QuotationClient {
-    Mono<QuotationDTO> findById(String quotationId);
+    Mono<Quotation> findById(String quotationId);
 }

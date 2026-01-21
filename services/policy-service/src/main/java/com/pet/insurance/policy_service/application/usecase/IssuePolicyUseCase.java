@@ -26,8 +26,8 @@ public class IssuePolicyUseCase {
             String ownerEmail) {
 
         return quotationClient.findById(quotationId)
-                .flatMap(quotationDTO -> {
-                    if (quotationDTO.expired()) {
+                .flatMap(quotation -> {
+                    if (quotation.isExpired()) {
                         return Mono.error(new QuotationExpiredException(quotationId));
                     }
 

@@ -97,4 +97,8 @@ public class QuotationDTO {
     public void setExpiresAt(LocalDate expiresAt) {
         this.expiresAt = expiresAt;
     }
+
+    public boolean expired() {
+        return expiresAt != null && expiresAt.isBefore(LocalDate.now());
+    }
 }
