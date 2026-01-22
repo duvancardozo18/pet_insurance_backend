@@ -13,6 +13,8 @@ import reactor.core.publisher.Mono;
 @Component
 public class QuotationWebClient implements QuotationClient {
 
+    private static final int HTTP_NOT_FOUND = 404;
+
     private final WebClient webClient;
     private final QuotationMapper mapper;
 
@@ -31,7 +33,7 @@ public class QuotationWebClient implements QuotationClient {
                 .uri("/{id}", quotationId)
                 .retrieve()
                 .onStatus(
-                        status -> status.value() == 404,
+                        status -> status.value() == HTTP_NOT_FOUND,
                         response -> Mono.error(new QuotationNotFoundException(quotationId)))
                 .bodyToMono(QuotationDTO.class)
                 .map(mapper::toDomain)
