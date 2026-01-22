@@ -1,4 +1,4 @@
-package com.pet.insurance.policy_service.infrastructure.config;
+package com.pet.insurance.quoting_service.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -9,7 +9,6 @@ import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
-import org.bson.UuidRepresentation;
 
 @Configuration
 public class MongoConfig {
@@ -27,7 +26,6 @@ public class MongoConfig {
         return MongoClients.create(
                 MongoClientSettings.builder()
                         .applyConnectionString(new ConnectionString(connectionString))
-                        .uuidRepresentation(UuidRepresentation.STANDARD)
                         .build());
     }
 
@@ -38,7 +36,6 @@ public class MongoConfig {
         return com.mongodb.client.MongoClients.create(
                 MongoClientSettings.builder()
                         .applyConnectionString(new ConnectionString(connectionString))
-                        .uuidRepresentation(UuidRepresentation.STANDARD)
                         .build());
     }
 }
