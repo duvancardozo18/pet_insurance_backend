@@ -5,6 +5,8 @@ import com.pet.insurance.policy_service.domain.model.Policy;
 import com.pet.insurance.policy_service.domain.model.Quotation;
 import com.pet.insurance.policy_service.domain.port.PolicyRepository;
 import com.pet.insurance.policy_service.domain.port.QuotationClient;
+import com.pet.insurance.policy_service.domain.port.DomainEventPublisher;
+import com.pet.insurance.policy_service.domain.event.PolicyIssuedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,11 +32,14 @@ class IssuePolicyUseCaseTest {
     @Mock
     private QuotationClient quotationClient;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
     private IssuePolicyUseCase issuePolicyUseCase;
 
     @BeforeEach
     void setUp() {
-        issuePolicyUseCase = new IssuePolicyUseCase(policyRepository, quotationClient);
+        issuePolicyUseCase = new IssuePolicyUseCase(policyRepository, quotationClient, eventPublisher);
     }
 
     @Test
@@ -50,6 +55,7 @@ class IssuePolicyUseCaseTest {
 
         when(quotationClient.findById(quotationId)).thenReturn(Mono.just(quotation));
         when(policyRepository.save(any(Policy.class))).thenReturn(Mono.just(expectedPolicy));
+        when(eventPublisher.publishPolicyIssued(any(PolicyIssuedEvent.class))).thenReturn(Mono.empty());
 
         // When
         Mono<Policy> result = issuePolicyUseCase.execute(quotationId, ownerId, ownerName, ownerEmail);
@@ -61,6 +67,7 @@ class IssuePolicyUseCaseTest {
 
         verify(quotationClient, times(1)).findById(quotationId);
         verify(policyRepository, times(1)).save(any(Policy.class));
+        verify(eventPublisher, times(1)).publishPolicyIssued(any(PolicyIssuedEvent.class));
     }
 
     @Test
@@ -86,6 +93,7 @@ class IssuePolicyUseCaseTest {
 
         verify(quotationClient, times(1)).findById(quotationId);
         verify(policyRepository, never()).save(any(Policy.class));
+        verify(eventPublisher, never()).publishPolicyIssued(any(PolicyIssuedEvent.class));
     }
 
     @Test
@@ -107,6 +115,7 @@ class IssuePolicyUseCaseTest {
 
         verify(quotationClient, times(1)).findById(quotationId);
         verify(policyRepository, never()).save(any(Policy.class));
+        verify(eventPublisher, never()).publishPolicyIssued(any(PolicyIssuedEvent.class));
     }
 
     @Test
@@ -134,6 +143,7 @@ class IssuePolicyUseCaseTest {
 
         verify(quotationClient, times(1)).findById(quotationId);
         verify(policyRepository, times(1)).save(any(Policy.class));
+        verify(eventPublisher, never()).publishPolicyIssued(any(PolicyIssuedEvent.class));
     }
 
     @Test
@@ -154,6 +164,7 @@ class IssuePolicyUseCaseTest {
             assertEquals(ownerEmail, policy.getOwner().email());
             return Mono.just(policy);
         });
+        when(eventPublisher.publishPolicyIssued(any(PolicyIssuedEvent.class))).thenReturn(Mono.empty());
 
         // When
         Mono<Policy> result = issuePolicyUseCase.execute(quotationId, ownerId, ownerName, ownerEmail);
@@ -164,6 +175,74 @@ class IssuePolicyUseCaseTest {
                         policy.getOwner().name().equals(ownerName) &&
                         policy.getOwner().email().equals(ownerEmail))
                 .verifyComplete();
+    }
+
+    @Test
+    void shouldPublishEventWithCorrectPolicyData() {
+        // Given
+        String quotationId = UUID.randomUUID().toString();
+        String ownerId = "owner789";
+        String ownerName = "Alice Johnson";
+        String ownerEmail = "alice@example.com";
+
+        Quotation quotation = createValidQuotation(quotationId);
+
+        when(quotationClient.findById(quotationId)).thenReturn(Mono.just(quotation));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(eventPublisher.publishPolicyIssued(any(PolicyIssuedEvent.class))).thenReturn(Mono.empty());
+
+        // When
+        Mono<Policy> result = issuePolicyUseCase.execute(quotationId, ownerId, ownerName, ownerEmail);
+
+        // Then
+        StepVerifier.create(result)
+                .expectNextCount(1)
+                .verifyComplete();
+
+        verify(eventPublisher)
+                .publishPolicyIssued(argThat(event -> event.quotationId().toString().equals(quotationId) &&
+                        event.ownerEmail().equals(ownerEmail)));
+    }
+
+    @Test
+    void shouldNotPublishEventWhenRepositoryFails() {
+        // Given
+        String quotationId = UUID.randomUUID().toString();
+        Quotation quotation = createValidQuotation(quotationId);
+
+        when(quotationClient.findById(quotationId)).thenReturn(Mono.just(quotation));
+        when(policyRepository.save(any(Policy.class))).thenReturn(Mono.error(new RuntimeException("Save failed")));
+
+        // When
+        Mono<Policy> result = issuePolicyUseCase.execute(quotationId, "id", "name", "email@test.com");
+
+        // Then
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(eventPublisher, never()).publishPolicyIssued(any(PolicyIssuedEvent.class));
+    }
+
+    @Test
+    void shouldReturnErrorWhenEventPublisherFails() {
+        // Given
+        String quotationId = UUID.randomUUID().toString();
+        Quotation quotation = createValidQuotation(quotationId);
+        RuntimeException exception = new RuntimeException("Event publishing failed");
+
+        when(quotationClient.findById(quotationId)).thenReturn(Mono.just(quotation));
+        when(policyRepository.save(any(Policy.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(eventPublisher.publishPolicyIssued(any(PolicyIssuedEvent.class))).thenReturn(Mono.error(exception));
+
+        // When
+        Mono<Policy> result = issuePolicyUseCase.execute(quotationId, "id", "name", "email@test.com");
+
+        // Then
+        StepVerifier.create(result)
+                .expectErrorMatches(error -> error instanceof RuntimeException &&
+                        error.getMessage().equals("Event publishing failed"))
+                .verify();
     }
 
     private Quotation createValidQuotation(String quotationId) {
