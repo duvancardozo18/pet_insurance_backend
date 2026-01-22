@@ -1,0 +1,28 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(user, "Insurance Manager", "Create and issue pet insurance")
+
+System_Boundary(system, "Pet Insurance System") {
+
+    Container(quoting, "Quoting Service", "Spring Boot / WebFlux", "Calculates and manages insurance quotations and exposes its own REST endpoints")
+    Container(policy, "Policy Service", "Spring Boot / WebFlux", "Issues policies, communicates with Quoting Service via HTTP, and sends simulated events to external systems")
+    
+    ContainerDb(quotingDb, "Quoting DB", "MongoDB (R2DBC)", "Stores quotations for Quoting Service")
+    ContainerDb(policyDb, "Policy DB", "MongoDB (R2DBC)", "Stores issued policies for Policy Service")
+}
+
+System_Ext(billing, "Billing System", "External billing system")
+
+' Interactions
+Rel(user, quoting, "1. Creates quotation", "HTTP / JSON")
+Rel(user, policy, "2. Issues policy (requires quotation)", "HTTP / JSON")
+
+Rel(policy, quoting, "Retrieves quotation data", "HTTP / JSON via WebClient")
+
+Rel(quoting, quotingDb, "Reads/Writes")
+Rel(policy, policyDb, "Reads/Writes")
+
+Rel(policy, billing, "Sends simulated event", "Simulated")
+
+@enduml

@@ -1,0 +1,117 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Insurance Manager", "Create quotations and issue policies")
+
+System_Boundary(quoting_system, "Quoting Service") {
+    
+    ' API Layer
+    Component(quoting_controller, "QuotationController", "Spring WebFlux RestController", "Exposes REST API for quotation management")
+    Component(quoting_exception, "GlobalExceptionHandler", "Spring ControllerAdvice", "Handles errors and exceptions globally")
+    
+    ' Application Layer
+    Component(generate_usecase, "GenerateQuotationUseCase", "Application Service", "Calculates price and creates new quotations")
+    Component(get_by_id_usecase, "GetQuotationByIdUseCase", "Application Service", "Retrieves quotation by ID")
+    Component(get_all_usecase, "GetAllQuotationsUseCase", "Application Service", "Lists all quotations")
+    
+    ' Domain Layer
+    Component(quotation_model, "Quotation", "Domain Model", "Pet insurance quotation entity with business rules")
+    Component(quotation_port, "QuotationRepository", "Port Interface", "Repository contract for quotation persistence")
+    
+    ' Infrastructure Layer
+    Component(quotation_adapter, "QuotationRepositoryAdapter", "Repository Adapter", "Implements repository port using MongoDB")
+    Component(quotation_mapper, "QuotationMapper", "Mapper", "Converts between domain and entity objects")
+    Component(quotation_entity, "QuotationEntity", "MongoDB Entity", "Persistence model for MongoDB")
+    
+    ComponentDb(mongo_repo, "QuotationMongoRepository", "Spring Data Reactive", "Reactive MongoDB repository interface")
+}
+
+ContainerDb(quoting_db, "Quoting DB", "MongoDB", "Stores quotations")
+
+System_Boundary(policy_system, "Policy Service") {
+    
+    ' API Layer
+    Component(policy_controller, "PolicyController", "Spring WebFlux RestController", "Exposes REST API for policy issuance")
+    Component(policy_exception, "GlobalExceptionHandler", "Spring ControllerAdvice", "Handles errors and exceptions globally")
+    
+    ' Application Layer
+    Component(issue_policy_usecase, "IssuePolicyUseCase", "Application Service", "Issues new policies based on quotations")
+    
+    ' Domain Layer
+    Component(policy_model, "Policy", "Domain Model", "Insurance policy entity with business rules")
+    Component(owner_model, "Owner", "Domain Model", "Policy owner value object")
+    Component(policy_repo_port, "PolicyRepository", "Port Interface", "Repository contract for policy persistence")
+    Component(quotation_client_port, "QuotationClient", "Port Interface", "Client contract to retrieve quotations")
+    Component(policy_event, "PolicyIssuedEvent", "Domain Event", "Event emitted when policy is issued")
+    
+    ' Infrastructure Layer - Persistence
+    Component(policy_adapter, "MongoPolicyRepositoryAdapter", "Repository Adapter", "Implements repository port using MongoDB")
+    Component(policy_document, "PolicyDocument", "MongoDB Entity", "Persistence model for MongoDB")
+    ComponentDb(spring_data_repo, "SpringDataPolicyRepository", "Spring Data Reactive", "Reactive MongoDB repository interface")
+    
+    ' Infrastructure Layer - HTTP Client
+    Component(quotation_webclient, "QuotationWebClient", "HTTP Client", "WebClient implementation to call Quoting Service")
+    Component(quotation_dto, "QuotationDTO", "DTO", "Data transfer object for quotation data")
+    Component(quotation_mapper_policy, "QuotationMapper", "Mapper", "Converts DTO to domain model")
+    
+    ' Configuration
+    Component(webclient_config, "WebClientConfig", "Spring Configuration", "Configures WebClient for HTTP calls")
+}
+
+ContainerDb(policy_db, "Policy DB", "MongoDB", "Stores issued policies")
+
+System_Ext(billing, "Billing System", "External billing system")
+
+' User interactions
+Rel(user, quoting_controller, "POST /quotations", "HTTP / JSON")
+Rel(user, policy_controller, "POST /policies", "HTTP / JSON")
+
+' Quoting Service - Internal flows
+Rel(quoting_controller, generate_usecase, "Calls", "")
+Rel(quoting_controller, get_by_id_usecase, "Calls", "")
+Rel(quoting_controller, get_all_usecase, "Calls", "")
+
+Rel(generate_usecase, quotation_model, "Creates", "")
+Rel(generate_usecase, quotation_port, "Uses", "")
+Rel(get_by_id_usecase, quotation_port, "Uses", "")
+Rel(get_all_usecase, quotation_port, "Uses", "")
+
+Rel(quotation_adapter, quotation_port, "Implements", "")
+Rel(quotation_adapter, quotation_mapper, "Uses", "")
+Rel(quotation_adapter, mongo_repo, "Calls", "")
+
+Rel(quotation_mapper, quotation_model, "To/From", "")
+Rel(quotation_mapper, quotation_entity, "To/From", "")
+
+Rel(mongo_repo, quoting_db, "Reads/Writes", "Reactive MongoDB Driver")
+
+' Policy Service - Internal flows
+Rel(policy_controller, issue_policy_usecase, "Calls", "")
+
+Rel(issue_policy_usecase, quotation_client_port, "Uses", "Retrieve quotation")
+Rel(issue_policy_usecase, policy_model, "Creates", "")
+Rel(issue_policy_usecase, owner_model, "Creates", "")
+Rel(issue_policy_usecase, policy_repo_port, "Uses", "")
+
+Rel(policy_model, policy_event, "Generates", "")
+
+Rel(policy_adapter, policy_repo_port, "Implements", "")
+Rel(policy_adapter, policy_document, "Uses", "")
+Rel(policy_adapter, spring_data_repo, "Calls", "")
+
+Rel(quotation_webclient, quotation_client_port, "Implements", "")
+Rel(quotation_webclient, quotation_dto, "Uses", "")
+Rel(quotation_webclient, quotation_mapper_policy, "Uses", "")
+Rel(quotation_webclient, webclient_config, "Configured by", "")
+
+Rel(spring_data_repo, policy_db, "Reads/Writes", "Reactive MongoDB Driver")
+
+' Inter-service communication
+Rel(quotation_webclient, quoting_controller, "GET /quotations/{id}", "HTTP / JSON")
+
+' External integration
+Rel(policy_model, billing, "Sends event (simulated)", "PolicyIssuedEvent")
+
+SHOW_LEGEND()
+
+@enduml
