@@ -8,6 +8,9 @@ import java.util.UUID;
 
 public class Quotation {
 
+    private static final int MAX_INSURABLE_AGE = 10;
+    private static final int QUOTATION_EXPIRATION_DAYS = 30;
+
     private final String id;
     private final String petName;
     private final String species;
@@ -44,7 +47,7 @@ public class Quotation {
                 age,
                 premiumPlan,
                 price,
-                LocalDate.now().plusDays(30));
+                LocalDate.now().plusDays(QUOTATION_EXPIRATION_DAYS));
     }
 
     public static Quotation reconstruct(String id, String petName, String species, String breed, int age,
@@ -53,7 +56,7 @@ public class Quotation {
     }
 
     private void validateAge(int age) {
-        if (age > 10) {
+        if (age > MAX_INSURABLE_AGE) {
             throw new InvalidPetAgeException();
         }
         if (age < 0) {
@@ -113,5 +116,9 @@ public class Quotation {
 
     public LocalDate expiresAt() {
         return expiresAt;
+    }
+
+    public static int getMaxInsurableAge() {
+        return MAX_INSURABLE_AGE;
     }
 }

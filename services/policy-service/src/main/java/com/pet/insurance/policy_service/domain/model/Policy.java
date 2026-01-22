@@ -7,6 +7,8 @@ import java.util.UUID;
 
 public class Policy {
 
+    private static final int POLICY_DURATION_YEARS = 1;
+
     private final UUID id;
     private final UUID quotationId;
     private final Owner owner;
@@ -30,7 +32,7 @@ public class Policy {
 
     public static Policy issue(UUID quotationId, Owner owner) {
         LocalDate start = LocalDate.now();
-        LocalDate end = start.plusYears(1);
+        LocalDate end = start.plusYears(POLICY_DURATION_YEARS);
 
         return new Policy(
                 UUID.randomUUID(),

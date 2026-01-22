@@ -8,6 +8,12 @@ import java.math.BigDecimal;
 
 public class GenerateQuotationUseCase {
 
+    private static final BigDecimal DOG_PRICE_MULTIPLIER = BigDecimal.valueOf(1.2);
+    private static final BigDecimal OTHER_SPECIES_MULTIPLIER = BigDecimal.valueOf(1.1);
+    private static final int AGE_THRESHOLD = 5;
+    private static final BigDecimal AGE_PREMIUM_MULTIPLIER = BigDecimal.valueOf(1.5);
+    private static final BigDecimal PREMIUM_PLAN_MULTIPLIER = BigDecimal.valueOf(2);
+
     private final QuotationRepository repository;
 
     public GenerateQuotationUseCase(QuotationRepository repository) {
@@ -34,17 +40,17 @@ public class GenerateQuotationUseCase {
         BigDecimal price = BigDecimal.TEN;
 
         if ("DOG".equalsIgnoreCase(species)) {
-            price = price.multiply(BigDecimal.valueOf(1.2));
+            price = price.multiply(DOG_PRICE_MULTIPLIER);
         } else {
-            price = price.multiply(BigDecimal.valueOf(1.1));
+            price = price.multiply(OTHER_SPECIES_MULTIPLIER);
         }
 
-        if (age > 5) {
-            price = price.multiply(BigDecimal.valueOf(1.5));
+        if (age > AGE_THRESHOLD) {
+            price = price.multiply(AGE_PREMIUM_MULTIPLIER);
         }
 
         if (premium) {
-            price = price.multiply(BigDecimal.valueOf(2));
+            price = price.multiply(PREMIUM_PLAN_MULTIPLIER);
         }
 
         return price;
