@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+
+  # =========================
+  # MongoDB - Quoting Service
+  # =========================
+  mongo-quoting:
+    image: mongo:4.4
+    container_name: mongo-quoting
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_quoting_data:/data/db
+    command: ["mongod", "--bind_ip_all"]
+
+  # =========================
+  # MongoDB - Policy Service
+  # =========================
+  mongo-policy:
+    image: mongo:4.4
+    container_name: mongo-policy
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_policy_data:/data/db
+    command: ["mongod", "--bind_ip_all"]
+
+  # =========================
+  # Quoting Microservice
+  # =========================
+  quoting-service:
+    build:
+      context: ./services/quoting-service
+      dockerfile: Dockerfile
+    container_name: quoting-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATA_MONGODB_HOST: mongo-quoting
+      SPRING_DATA_MONGODB_PORT: 27017
+      SPRING_DATA_MONGODB_DATABASE: quoting_db
+    depends_on:
+      - mongo-quoting
+
+  # =========================
+  # Policy Microservice
+  # =========================
+  policy-service:
+    build:
+      context: ./services/policy-service
+      dockerfile: Dockerfile
+    container_name: policy-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATA_MONGODB_HOST: mongo-policy
+      SPRING_DATA_MONGODB_PORT: 27017
+      SPRING_DATA_MONGODB_DATABASE: policy_db
+      QUOTING_SERVICE_URL: http://quoting-service:8080/quotations
+    depends_on:
+      - mongo-policy
+      - quoting-service
+
+# =========================
+# Volumes
+# =========================
+volumes:
+  mongo_quoting_data:
+  mongo_policy_data:
